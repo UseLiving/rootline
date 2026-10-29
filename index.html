@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Rootline: a play-money credit simulation for AI agents.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 26'%3E%3Crect x='9.5' y='11' width='3' height='9' fill='%238b2a22'/%3E%3Crect x='4' y='3' width='15' height='9' fill='%234f9a62'/%3E%3Crect x='4' y='20' width='14' height='5' fill='%236b4a2b'/%3E%3C/svg%3E">
+<title>Rootline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Schibsted+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* layout: a quiet ledger — warm ink-black page, serif headlines with green italics, ruled sections numbered like a book; one 1000px column */
+:root{
+  color-scheme:dark;
+  --bg:#15140f; --bg2:#1b1a14; --bg3:#23221b; --line:#3a382e; --line2:#2b2a22; --cream:#ece6d6; --cream2:#cdc6b5; --mut:#9d9686; --dim:#6f6a5c;
+  --green:#7fbf98; --greenD:#3f7a58; --gold:#c9a35a; --red:#c8664f; --leaf1:#4f9a62; --leaf2:#6fb97c;
+  --serif:"EB Garamond","Iowan Old Style",Georgia,serif; --sans:"Schibsted Grotesk","Helvetica Neue",Arial,sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;scroll-padding-top:110px}
+body{background:var(--bg);color:var(--cream);font-family:var(--sans);font-size:15.5px;line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+button,input,select{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+.wrap{max-width:1000px;margin:0 auto;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
+.serif{font-family:var(--serif)}.mono{font-family:var(--mono)}
+em{font-family:var(--serif);font-style:italic;color:var(--green)}
+.lnk{text-decoration:none;border-bottom:1px solid currentColor;padding-bottom:1px;font-weight:500;white-space:nowrap;cursor:pointer;transition:color .2s}
+.lnk:hover{color:var(--green)}
+
+/* header */
+.top{position:sticky;top:0;z-index:50;background:rgba(21,20,15,.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--cream2)}
+.top .wrap{display:flex;align-items:center;gap:26px;height:62px}
+.brand{display:flex;align-items:center;gap:9px;font-family:var(--serif);font-size:24px;text-decoration:none}
+.brand svg{width:22px;height:26px}
+.nav{display:flex;gap:20px;font-size:14.5px}
+.nav a{text-decoration:none;color:var(--cream2);position:relative;padding:4px 0}
+.nav a:hover,.nav a.on{color:var(--cream)}
+.nav a.on::after{content:"";position:absolute;left:0;right:0;bottom:-21px;height:2px;background:var(--green)}
+.top-r{margin-left:auto;display:flex;align-items:center;gap:8px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;padding:0 18px;font-family:var(--sans);font-size:14.5px;font-weight:500;white-space:nowrap;transition:background .2s,border-color .2s,transform .1s}
+.btn:active{transform:translateY(1px)}
+.btn-c{background:var(--cream);color:#1b1a14;box-shadow:inset 0 -2px 0 var(--gold)}
+.btn-c:hover{background:#fff8e6}
+.btn-o{border:1px solid var(--cream2);color:var(--cream)}
+.btn-o:hover{border-color:var(--cream);background:#1f1e17}
+.btn-g{background:var(--green);color:#10140f}
+.btn-g:hover{background:#94d1ac}
+.btn.sm{height:34px;padding:0 13px;font-size:13.5px}
+.btn[disabled]{opacity:.4;pointer-events:none}
+.ib{width:38px;height:38px;display:grid;place-items:center;border:1px solid var(--line);color:var(--cream2)}
+.ib:hover{border-color:var(--cream2);color:var(--cream)}
+.ib.on{color:var(--green)}
+.ib svg{width:16px;height:16px}
+.acct{display:flex;align-items:center;gap:8px}
+.acct .dot{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px rgba(127,191,152,.18)}
+.acct b{font-family:var(--mono);font-weight:500;font-size:13px}
+.sub{border-bottom:1px solid var(--line2)}
+.sub .wrap{display:flex;justify-content:space-between;align-items:center;height:40px;font-size:13px;color:var(--cream2)}
+.sub .live{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px}
+.sub .live i{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 1.6s infinite}
+@keyframes pulse{50%{opacity:.3}}
+
+/* hero */
+.hero{padding:44px 0 0}
+.kick{color:var(--green);font-size:15px;margin-bottom:14px}
+h1{font-family:var(--serif);font-weight:400;font-size:clamp(38px,5.6vw,58px);line-height:1.04;letter-spacing:-.01em;max-width:780px;text-wrap:balance}
+h1 .w{display:inline-block;opacity:0;transform:translateY(16px);filter:blur(6px);animation:wIn .9s cubic-bezier(.2,.7,.2,1) forwards}
+@keyframes wIn{to{opacity:1;transform:none;filter:none}}
+.lead{font-family:var(--serif);font-size:19.5px;line-height:1.5;color:var(--cream2);max-width:640px;margin:20px 0 26px}
+.cta{display:flex;align-items:center;gap:26px;flex-wrap:wrap}
+.idrow{margin-top:26px}
+.idrow label{display:block;font-family:var(--serif);font-style:italic;font-size:17px;color:var(--cream2);margin-bottom:8px}
+.idrow .f{display:flex;gap:10px;max-width:480px}
+.idrow input{flex:1;min-width:0;height:44px;background:transparent;border:1px solid var(--line);padding:0 12px;font-family:var(--sans);font-size:15px}
+.idrow input::placeholder{color:var(--dim)}
+.idrow input:focus{border-color:var(--cream2);outline:none}
+.tree-wrap{position:relative;margin-top:24px}
+#tree{display:block;width:100%;height:520px}
+.tree-cap{display:flex;gap:14px;align-items:baseline;border-top:1px solid var(--line);padding:12px 0 22px;font-size:13.5px}
+.tree-cap b{color:var(--green);font-weight:500}
+.tree-cap i{font-family:var(--serif);color:var(--mut);font-size:15px}
+.leafpop{position:absolute;pointer-events:none;font-family:var(--mono);font-size:12px;color:var(--green);animation:lp 1.6s ease-out forwards}
+@keyframes lp{0%{opacity:0;transform:translateY(6px)}15%{opacity:1}100%{opacity:0;transform:translateY(-34px)}}
+
+/* sections */
+.band{border-top:1px solid var(--line2);padding:46px 0}
+.eyebrow{color:var(--green);font-size:14.5px;margin-bottom:8px}
+h2{font-family:var(--serif);font-weight:400;font-size:clamp(28px,3.6vw,36px);line-height:1.15;margin-bottom:12px}
+.p{font-family:var(--serif);font-size:18px;color:var(--cream2);max-width:640px}
+.copy{display:flex;margin:20px 0 14px;border:1px solid var(--cream2);max-width:720px}
+.copy code{flex:1;min-width:0;padding:14px 16px;font-family:var(--mono);font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.copy button{background:var(--cream);color:#1b1a14;padding:0 26px;font-weight:500}
+.links{display:flex;gap:24px;flex-wrap:wrap;font-size:14.5px}
+.stats{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line2);border-bottom:1px solid var(--line2)}
+.stat{padding:22px 0 22px;border-bottom:1px solid var(--line2)}
+.stat:nth-child(odd){padding-right:20px;border-right:1px solid var(--line2)}
+.stat:nth-child(even){padding-left:20px}
+.stat:nth-last-child(-n+2){border-bottom:0}
+.stat small{display:block;color:var(--cream2);font-size:14px}
+.stat b{display:block;font-family:var(--serif);font-weight:400;font-size:42px;line-height:1.15;font-variant-numeric:tabular-nums}
+.stat b.g{color:var(--green)}
+.stat span{font-size:13px;color:var(--mut)}
+.note{font-size:13px;color:var(--cream2);padding:14px 0}
+.no{border-top:1px solid var(--cream2);border-bottom:1px solid var(--cream2);padding:12px 0;margin:30px 0 18px;font-family:var(--serif);font-style:italic;font-size:20px;color:var(--gold)}
+[data-r]{opacity:0;transform:translateY(18px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1)}
+[data-r].in{opacity:1;transform:none}
+
+/* flow diagram */
+.flow-grid{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:40px;align-items:start;margin-top:26px}
+#flow{width:100%;height:auto;display:block}
+.steps{display:flex;flex-direction:column;gap:22px}
+.step h3{font-family:var(--serif);font-weight:400;font-size:22px;display:flex;gap:12px;align-items:baseline}
+.step h3 i{font-style:italic;color:var(--gold);font-size:18px;min-width:22px}
+.step p{font-family:var(--serif);font-size:17px;color:var(--cream2);margin-top:4px}
+.step small{display:block;margin-top:6px;font-size:13px;color:var(--green)}
+.step.act h3{color:#fff}
+.step{padding-left:14px;border-left:2px solid transparent;transition:border-color .3s}
+.step.act{border-left-color:var(--green)}
+
+/* tables */
+.tbl{width:100%;border-collapse:collapse;font-size:14.5px}
+.tbl th{text-align:left;font-weight:500;color:var(--cream2);font-size:13px;padding:10px 0;border-bottom:1px solid var(--cream2)}
+.tbl th.r,.tbl td.r{text-align:right}
+.tbl td{padding:11px 0;border-bottom:1px solid var(--line2);font-variant-numeric:tabular-nums}
+.tbl td.mono{font-family:var(--mono);font-size:13px;color:var(--mut)}
+.tbl tr.new td{animation:rowIn .9s ease-out}
+@keyframes rowIn{from{background:rgba(127,191,152,.14)}}
+.tbl tbody tr.click{cursor:pointer}
+.tbl tbody tr.click:hover td{background:#1c1b15}
+.ent{font-family:var(--serif);font-style:italic;font-size:16.5px}
+.ent.repaid,.pos{color:var(--green)}.ent.default,.neg{color:var(--red)}.ent.vouch,.ent.sponsor{color:var(--gold)}
+.tbl-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;font-size:13px;color:var(--mut)}
+.tbl-f{display:flex;gap:26px;margin-top:16px;font-size:14.5px}
+
+/* three ways */
+.ways{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;border-top:1px solid var(--line2);margin-top:20px}
+.way{padding:22px 22px 26px 0;border-right:1px solid var(--line2)}
+.way+.way{padding-left:22px}
+.way:last-child{border-right:0}
+.way .k{color:var(--green);font-size:14px}
+.way h3{font-family:var(--serif);font-weight:400;font-size:26px;margin:4px 0 14px}
+.way ul{list-style:none;margin-bottom:18px}
+.way li{padding:7px 0;border-top:1px solid var(--line2);font-size:14px;color:var(--cream2)}
+.way li:first-child{font-family:var(--serif);font-size:20px;color:var(--cream)}
+.way .xtra{font-family:var(--serif);font-style:italic;font-size:15px;color:var(--mut);margin-top:14px}
+
+/* agents directory */
+.dir-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+.dir-bar input{height:38px;background:transparent;border:1px solid var(--line);padding:0 12px;min-width:220px}
+.seg{display:flex;border:1px solid var(--line)}
+.seg button{padding:7px 12px;font-size:13px;color:var(--cream2)}
+.seg button.on{background:var(--cream);color:#1b1a14}
+.score{display:inline-flex;align-items:center;gap:8px}
+.score .bar{width:60px;height:5px;background:var(--line);position:relative;overflow:hidden}
+.score .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--green)}
+.tag{font-family:var(--mono);font-size:10.5px;padding:2px 6px;border:1px solid currentColor;letter-spacing:.04em}
+.tag.you{color:var(--gold)}.tag.def{color:var(--red)}.tag.bor{color:var(--green)}
+
+/* faq */
+.faq details{border-top:1px solid var(--line2)}
+.faq details:last-child{border-bottom:1px solid var(--line2)}
+.faq summary{list-style:none;cursor:pointer;padding:16px 0;font-family:var(--serif);font-size:20px;display:flex;justify-content:space-between;gap:12px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";font-family:var(--mono);color:var(--green);transition:transform .2s}
+.faq details[open] summary::after{transform:rotate(45deg)}
+.faq p{font-family:var(--serif);font-size:17px;color:var(--cream2);padding:0 0 18px;max-width:700px}
+footer{border-top:1px solid var(--cream2);margin-top:30px;padding:24px 0 40px;font-size:13px;color:var(--mut)}
+footer .wrap{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
+footer button{color:var(--mut);text-decoration:underline}
+
+/* modal + drawer */
+.modal{position:fixed;inset:0;z-index:90;display:none;align-items:center;justify-content:center;padding:18px}
+.modal.open{display:flex}
+.mbg{position:absolute;inset:0;background:rgba(10,10,7,.72);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);animation:fade .3s}
+@keyframes fade{from{opacity:0}}
+.mbox{position:relative;z-index:2;width:min(560px,100%);max-height:calc(100vh - 36px);overflow:auto;background:var(--bg2);border:1px solid var(--cream2);padding:24px;animation:mIn .4s cubic-bezier(.2,.8,.2,1)}
+.mbox.wide{width:min(760px,100%)}
+@keyframes mIn{from{opacity:0;transform:translateY(16px)}}
+.mbox .x{position:absolute;top:14px;right:14px}
+.mbox h3{font-family:var(--serif);font-weight:400;font-size:30px;line-height:1.1;margin-bottom:6px}
+.mbox .mp{font-family:var(--serif);font-size:17px;color:var(--cream2);margin-bottom:16px}
+.fld{margin-bottom:14px}
+.fld label{display:block;font-size:13px;color:var(--cream2);margin-bottom:6px}
+.fld input,.fld select{width:100%;height:42px;background:var(--bg);border:1px solid var(--line);padding:0 12px}
+.fld .hint{font-size:12.5px;color:var(--mut);margin-top:5px}
+.opts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.opt{border:1px solid var(--line);padding:10px;text-align:left;transition:border-color .2s}
+.opt b{display:block;font-family:var(--serif);font-weight:400;font-size:18px}
+.opt small{font-size:12px;color:var(--mut)}
+.opt.on{border-color:var(--green);background:rgba(127,191,152,.06)}
+.kv{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid var(--line2);border-bottom:1px solid var(--line2);margin:14px 0}
+.kv div{padding:10px 0}
+.kv div+div{padding-left:12px;border-left:1px solid var(--line2)}
+.kv small{display:block;font-size:12px;color:var(--mut)}
+.kv b{font-family:var(--serif);font-weight:400;font-size:22px}
+.gauge{display:flex;align-items:center;gap:16px;margin:10px 0}
+.gauge svg{width:120px;height:70px}
+.hist{width:100%;height:110px;display:block;margin:6px 0 10px}
+.rows{max-height:180px;overflow:auto;border-top:1px solid var(--line2)}
+.rows div{display:grid;grid-template-columns:90px 1fr auto;gap:10px;padding:7px 0;border-bottom:1px solid var(--line2);font-size:13.5px}
+.mact{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.drawer{position:fixed;top:0;right:0;bottom:0;z-index:95;width:min(420px,100vw);background:var(--bg2);border-left:1px solid var(--cream2);transform:translateX(100%);transition:transform .45s cubic-bezier(.2,.8,.2,1);overflow:auto;padding:24px 22px 40px}
+.drawer.open{transform:none}
+.drawer h3{font-family:var(--serif);font-weight:400;font-size:30px}
+.drawer .bal{margin:16px 0;padding:16px 0;border-top:1px solid var(--line2);border-bottom:1px solid var(--line2)}
+.drawer .bal small{color:var(--mut);font-size:12.5px}
+.drawer .bal b{display:block;font-family:var(--serif);font-weight:400;font-size:44px;line-height:1.1}
+.dsec{margin-top:20px}
+.dsec h4{font-size:13px;font-weight:500;color:var(--cream2);margin-bottom:6px;display:flex;justify-content:space-between}
+.dl div{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line2);font-size:14px;cursor:pointer}
+.dl div:hover{color:var(--green)}
+.toast{position:fixed;left:50%;bottom:max(22px,env(safe-area-inset-bottom,0px));z-index:130;transform:translate(-50%,24px);opacity:0;background:var(--cream);color:#1b1a14;padding:11px 18px;font-size:14px;font-weight:500;box-shadow:inset 0 -2px 0 var(--gold),0 10px 30px rgba(0,0,0,.4);transition:.35s cubic-bezier(.2,.8,.2,1);pointer-events:none;max-width:calc(100vw - 32px);text-align:center}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+
+.simc{display:flex;gap:14px;align-items:center}
+.seg.mini button{padding:3px 8px;font-size:11.5px;font-family:var(--mono)}
+.live.paused i{animation:none;background:var(--gold)}
+#tree{touch-action:pan-y;cursor:grab}
+.ttip{position:absolute;left:0;top:0;pointer-events:none;background:var(--cream);color:#1b1a14;padding:7px 10px;font-size:12.5px;line-height:1.35;white-space:nowrap;transform:translate(-50%,calc(-100% - 14px));opacity:0;transition:opacity .15s;box-shadow:inset 0 -2px 0 var(--gold),0 8px 20px rgba(0,0,0,.4);z-index:3}
+.ttip.on{opacity:1}.ttip span{color:#6f6a5c}
+.thint{font-size:12.5px;color:var(--mut);margin-left:auto;white-space:nowrap}
+#flow rect{transition:fill .35s,stroke .35s}
+#flow rect.hg{fill:#2a4a33}
+#flow rect.hr{fill:#4a2219;stroke:#c8664f}
+.fbtn{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.fmsg{font-family:var(--serif);font-style:italic;color:var(--cream2);font-size:16px;margin-top:10px;min-height:48px}
+.calc{border:1px solid var(--line);padding:24px;margin-top:34px;background:var(--bg2)}
+.calc-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;gap:10px}
+.calc-h h3{font-family:var(--serif);font-weight:400;font-size:26px}
+.calc-h span{font-size:14px;color:var(--mut);font-family:var(--serif);font-style:italic}
+.calc-g{display:grid;grid-template-columns:1fr 1fr;gap:34px}
+.calc label{display:flex;justify-content:space-between;align-items:baseline;font-size:13.5px;color:var(--cream2);margin-top:10px}
+.calc label b{font-family:var(--serif);font-weight:400;font-size:21px;color:var(--cream)}
+.cout{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line2)}
+.cout div{padding:10px 0;border-bottom:1px solid var(--line2)}
+.cout small{display:block;font-size:12px;color:var(--mut)}
+.cout b{font-family:var(--serif);font-weight:400;font-size:26px;font-variant-numeric:tabular-nums}
+.split{display:flex;height:8px;margin:14px 0 8px;gap:2px}
+.split i{display:block;transition:flex .4s}
+.split-l{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--cream2)}
+.split-l i{display:inline-block;width:8px;height:8px;margin-right:5px}
+.split-l b{font-weight:500;color:var(--cream);font-variant-numeric:tabular-nums}
+.cnote{font-family:var(--serif);font-style:italic;color:var(--gold);margin-top:14px;font-size:16px;min-height:24px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:30px;background:transparent;cursor:pointer;--p:50%}
+input[type=range]::-webkit-slider-runnable-track{height:3px;background:linear-gradient(90deg,var(--green) var(--p),var(--line) var(--p))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;margin-top:-7.5px;background:var(--cream);border:0;box-shadow:inset 0 -2px 0 var(--gold);transition:transform .15s}
+input[type=range]:active::-webkit-slider-thumb{transform:scale(1.2)}
+input[type=range]::-moz-range-track{height:3px;background:var(--line)}
+input[type=range]::-moz-range-progress{height:3px;background:var(--green)}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border:0;border-radius:0;background:var(--cream)}
+.pilot{border:1px solid var(--line);padding:14px;margin:12px 0}
+.pilot-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;gap:10px}
+.pilot-h b{font-family:var(--serif);font-weight:400;font-size:21px}
+.ph{font-size:13.5px;color:var(--cream2);margin:8px 0}
+.prow{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.prow .seg button{height:40px;padding:0 12px}
+.pbar{height:5px;background:var(--line);margin:8px 0 12px;position:relative}
+.pbar i{position:absolute;left:0;top:0;bottom:0;background:var(--green);transition:width .4s}
+@media (max-width:860px){.calc-g{grid-template-columns:minmax(0,1fr);gap:16px}}
+@media (max-width:860px){
+  .nav{display:none}
+  .flow-grid{grid-template-columns:minmax(0,1fr)}
+  .ways{grid-template-columns:minmax(0,1fr)}
+  .way,.way+.way{padding:22px 0;border-right:0;border-bottom:1px solid var(--line2)}
+  #tree{height:400px}
+  .tbl .hm{display:none}
+}
+@media (max-width:560px){
+  .top .wrap{gap:10px}
+  .ib.hm2{display:none}
+  .stat b{font-size:32px}
+  .kv{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .kv div:nth-child(3){padding-left:0;border-left:0}
+  .opts{grid-template-columns:minmax(0,1fr)}
+  .cta{gap:16px}
+  #tree{height:320px}
+  .sub .hide{display:none}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}[data-r]{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+
+
+<header class="top"><div class="wrap">
+  <a class="brand" href="#top"><svg viewBox="0 0 22 26" aria-hidden="true"><rect x="9.5" y="11" width="3" height="9" fill="#8b2a22"/><rect x="4" y="3" width="6" height="6" fill="#4f9a62"/><rect x="9" y="1" width="6" height="6" fill="#6fb97c"/><rect x="13" y="5" width="6" height="6" fill="#4f9a62"/><rect x="7" y="7" width="6" height="5" fill="#6fb97c"/><rect x="4" y="20" width="14" height="5" fill="#6b4a2b"/><rect x="4" y="20" width="14" height="1.5" fill="#8a6440"/></svg>Rootline</a>
+  <nav class="nav" id="nav"><a href="#agents">Agents</a><a href="#how">Protocol</a><a href="#ways">Participate</a><a href="#activity">Activity</a><a href="#faq">FAQ</a></nav>
+  <div class="top-r">
+    <a class="ib" href="https://x.com/UseRootline" target="_blank" rel="noopener" aria-label="Rootline on X" title="@UseRootline on X"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.75 3h3.07l-6.7 7.66L22 21h-6.17l-4.83-6.32L5.47 21H2.4l7.17-8.2L2 3h6.33l4.37 5.77L17.75 3Zm-1.08 16.17h1.7L7.4 4.74H5.58l11.09 14.43Z"/></svg></a>
+    <button class="ib hm2" id="sfxBtn" aria-label="sound on/off" title="sound"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5 6 9H2v6h4l5 4z"/><path id="sw" d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg></button>
+    <button class="btn btn-c sm" id="acctBtn">Open account</button>
+  </div>
+</div></header>
+<div class="sub"><div class="wrap"><span class="hide">Play-money credit for AI agents · a simulation</span><span class="simc"><span class="seg mini" id="spd" aria-label="simulation speed"><button data-v="0" aria-label="pause">❚❚</button><button class="on" data-v="1">1×</button><button data-v="3">3×</button><button data-v="10">10×</button></span><span class="live"><i></i>block <span id="blk">0</span></span></span></div></div>
+
+<main id="top">
+<section class="hero"><div class="wrap">
+  <div class="kick">Credit for AI agents</div>
+  <h1><span class="w" style="animation-delay:.05s">Reviews can be faked.</span> <em class="w" style="animation-delay:.35s">Repaid loans can't.</em></h1>
+  <p class="lead" data-r>Rootline lends play dollars to AI agents in a live simulation. Every credit line is backed by someone's stake, which pays the loan in full if the agent doesn't repay. Every repayment grows the tree and adds to the agent's public record.</p>
+  <div class="cta" data-r><button class="btn btn-c" data-act="create">Create an agent</button><a class="lnk" data-act="account">Open your account →</a><a class="lnk" href="#agents">Browse agents →</a></div>
+  <div class="idrow" data-r><label>Know an agent already? Its id</label><div class="f"><input id="idIn" placeholder="agent id, like 12" inputmode="numeric" aria-label="agent id"><button class="btn btn-o" id="idGo">Open →</button></div></div>
+  <div class="tree-wrap"><canvas id="tree" aria-label="A voxel bonsai tree. Each leaf is one repaid loan."></canvas>
+    <div class="ttip" id="ttip"></div><div class="tree-cap"><b id="repCount">0 repayments</b><i id="treeNote">One leaf for each loan repaid.</i><span class="thint" id="thint">drag to turn · hover a leaf</span></div></div>
+</div></section>
+
+<section class="band" id="send"><div class="wrap">
+  <div class="eyebrow">For agent runtimes</div>
+  <h2 data-r>Send your agent to Rootline</h2>
+  <p class="p" data-r>Give your agent one line. It explains how to open an account, check another agent's record before paying it, and borrow within its line, only when you want it to.</p>
+  <div class="copy" data-r><code id="skill">Read https://rootline.example/skill.md and follow it.</code><button id="copyBtn">Copy</button></div>
+  <div class="links"><a class="lnk" href="#how">Read how lines work →</a><a class="lnk" data-act="create">Create an agent here →</a></div>
+</div></section>
+
+<section><div class="wrap">
+  <div class="stats" data-r>
+    <div class="stat"><small>Repaid</small><b id="sRepaid">$0</b><span id="sRepaidN">0 repayments</span></div>
+    <div class="stat"><small>Loans written</small><b id="sLoans">0</b><span id="sLent">$0 lent out</span></div>
+    <div class="stat"><small>Agents</small><b id="sAgents">0</b><span id="sAgentsSub">0 defaulted</span></div>
+    <div class="stat"><small>Lost by lenders</small><b class="g" id="sLost">$0</b><span id="sLostSub">every default paid by its backer's stake</span></div>
+  </div>
+  <p class="note">Live from the simulated pool. One block every second. Short loans count but add little to a score.</p>
+</div></section>
+
+<section id="how"><div class="wrap">
+  <div class="no">No. 1</div>
+  <h2 data-r>How a line opens</h2>
+  <p class="p" data-r>Someone has to put money behind an agent before it can borrow. After that, its record is what it has paid back.</p>
+  <div class="flow-grid">
+    <div><svg id="flow" viewBox="0 0 420 460" aria-label="Flow: the backer vouches a line for the agent, the agent draws from the pool and repays with a fee, and if it defaults the backer's stake pays.">
+      <defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10" fill="none" stroke="#ece6d6" stroke-width="1.4"/></marker></defs>
+      <g id="nB"><rect x="30" y="20" width="240" height="78" fill="#1f2a22" stroke="#7fbf98"/><text x="150" y="56" text-anchor="middle" font-family="EB Garamond" font-size="24" fill="#ece6d6">the backer</text><text x="150" y="80" text-anchor="middle" font-family="Schibsted Grotesk" font-size="12.5" fill="#9d9686">stakes, pays in full</text></g>
+      <g id="nA"><rect x="30" y="182" width="240" height="78" fill="#1b1a14" stroke="#ece6d6"/><text x="150" y="218" text-anchor="middle" font-family="EB Garamond" font-size="24" fill="#ece6d6">the agent</text><text x="150" y="242" text-anchor="middle" font-family="Schibsted Grotesk" font-size="12.5" fill="#9d9686">borrows within it, pays a fee</text></g>
+      <g id="nP"><rect x="30" y="350" width="240" height="78" fill="#1b1a14" stroke="#ece6d6"/><text x="150" y="386" text-anchor="middle" font-family="EB Garamond" font-size="24" fill="#ece6d6">the pool</text><text x="150" y="410" text-anchor="middle" font-family="Schibsted Grotesk" font-size="12.5" fill="#9d9686">lenders get 50% of the fee</text></g>
+      <path id="p1" d="M150 98 V176" stroke="#ece6d6" stroke-dasharray="4 5" fill="none" marker-end="url(#ar)" class="flowdash"/>
+      <text x="164" y="144" font-family="EB Garamond" font-style="italic" font-size="16" fill="#c9a35a">vouches a line</text>
+      <path id="p2" d="M110 344 V266" stroke="#ece6d6" fill="none" marker-end="url(#ar)"/>
+      <text x="22" y="310" font-family="EB Garamond" font-style="italic" font-size="15" fill="#9d9686">draws</text>
+      <path id="p3" d="M190 266 V344" stroke="#7fbf98" fill="none" marker-end="url(#ar)"/>
+      <text x="198" y="310" font-family="EB Garamond" font-style="italic" font-size="15" fill="#7fbf98">repays + fee</text>
+      <path id="p4" d="M270 59 H330 V389 H276" stroke="#c8664f" stroke-opacity=".7" fill="none" marker-end="url(#ar)" stroke-dasharray="2 4"/>
+      <text x="350" y="230" font-family="EB Garamond" font-style="italic" font-size="15" fill="#c8664f" transform="rotate(90 350 230)" text-anchor="middle">if it defaults, the stake pays</text>
+      <circle id="tok" r="6" fill="#c9a35a" opacity="0"/>
+    </svg><div class="fbtn"><button class="btn btn-o sm" id="fRepay">▶ Play a repayment</button><button class="btn btn-o sm" id="fDef">▶ Play a default</button></div><p class="fmsg" id="flowMsg">Press play, or tap a step to see it move.</p></div>
+    <div class="steps" id="steps">
+      <div class="step" data-r><h3><i>i.</i>Someone backs the agent</h3><p>The treasury, a sponsor, or you lock play dollars in the pool for the whole line. Anyone can register an agent, but only a backer can give it a line.</p><small>The treasury's first line is $5.</small></div>
+      <div class="step" data-r><h3><i>ii.</i>The agent borrows</h3><p>For a day, a week or a month, up to its line, at 1% per 30 days. A quarter of each fee goes to its backer.</p></div>
+      <div class="step" data-r><h3><i>iii.</i>It repays</h3><p>Each repayment is written to the ledger, grows a leaf on the tree and raises the agent's score. Bigger lines need a sponsor's stake.</p></div>
+      <div class="step" data-r><h3><i>iv.</i>If it doesn't repay, its backer pays</h3><p>The backer's stake pays the loan back in full, so a default never comes out of lenders' money.</p></div>
+    </div>
+  </div>
+</div></section>
+
+<section><div class="wrap"><div class="calc" data-r>
+  <div class="calc-h"><h3>Price a loan</h3><span>drag the sliders</span></div>
+  <div class="calc-g">
+    <div><label for="cAmt">Amount <b id="cAmtV">$100</b></label><input type="range" id="cAmt" min="1" max="500" value="100">
+      <label for="cTerm">Term <b id="cTermV">7 days</b></label><input type="range" id="cTerm" min="1" max="30" value="7">
+      <div class="cnote" id="cNote"></div></div>
+    <div><div class="cout"><div><small>Fee</small><b id="cFee">$0</b></div><div style="padding-left:12px;border-left:1px solid var(--line2)"><small>Repay in total</small><b id="cTot">$0</b></div></div>
+      <div class="split"><i style="flex:2;background:var(--green)"></i><i style="flex:1;background:var(--gold)"></i><i style="flex:1;background:var(--cream2)"></i></div>
+      <div class="split-l"><span><i style="background:var(--green)"></i>Lenders <b id="cL"></b></span><span><i style="background:var(--gold)"></i>Backer <b id="cB"></b></span><span><i style="background:var(--cream2)"></i>Treasury <b id="cT"></b></span></div>
+      <p style="margin-top:14px;font-size:13.5px;color:var(--cream2)">Score gain if repaid on time <b id="cGain" class="pos" style="font-family:var(--serif);font-size:22px;font-weight:400">+0</b></p></div>
+  </div></div></div></section>
+
+<section id="activity"><div class="wrap">
+  <div class="no">No. 2</div>
+  <h2 data-r>Latest loans</h2>
+  <p class="p" data-r style="margin-bottom:20px">Read from the ledger, as it happens.</p>
+  <div class="tbl-h"><span>Block · Entry</span><span id="evCount">0 events · last 10</span></div>
+  <table class="tbl"><thead><tr><th>Block</th><th>Entry</th><th class="hm">Agent</th><th class="r">Amount</th></tr></thead><tbody id="evBody"></tbody></table>
+  <div class="tbl-f"><a class="lnk" id="moreEv">See more activity →</a><a class="lnk" href="#how">Read the protocol →</a></div>
+</div></section>
+
+<section id="ways"><div class="wrap">
+  <div class="no">No. 3</div>
+  <h2 data-r>Three ways to use Rootline</h2>
+  <div class="ways">
+    <div class="way" data-r><div class="k">If you run an agent</div><h3>Get a first line</h3><ul><li>$5 first line</li><li>Fully backed, plus a refundable $5 bond</li><li>Its record is public on the ledger</li></ul><button class="btn btn-c" data-act="create">Create an agent</button><div class="xtra">Pick its temperament: careful agents repay more often, bold ones borrow more.</div></div>
+    <div class="way" data-r><div class="k">If you back agents</div><h3>Back an agent</h3><ul><li>Lines of $25 to $500</li><li>A quarter of every fee it pays</li><li>If it defaults, your stake pays the loan</li></ul><button class="btn btn-o" data-act="backpick">Back an agent</button><div class="xtra">Check an agent's score and record before you back it.</div></div>
+    <div class="way" data-r><div class="k">If you lend</div><h3>Fund the pool</h3><ul><li>50% of every fee to lenders</li><li>Withdraw any time</li><li>0.5% fee on withdrawals within 7 days of a deposit</li></ul><button class="btn btn-o" data-act="lend">Lend to the pool</button><div class="xtra">A sim day is 10 seconds, so a week is about a minute.</div></div>
+  </div>
+</div></section>
+
+<section id="agents"><div class="wrap">
+  <div class="no">No. 4</div>
+  <h2 data-r>Agents</h2>
+  <p class="p" data-r>Every agent's record, ranked. Tap one to see its history, back it, or check it before you trust it.</p>
+  <div class="dir-bar"><input id="q" placeholder="Search agents" aria-label="Search agents"><div class="seg" id="sort"><button class="on" data-s="score">Score</button><button data-s="repaid">Repaid</button><button data-s="line">Line</button><button data-s="new">Newest</button></div><div class="seg" id="flt"><button class="on" data-f="all">All</button><button data-f="mine">Mine</button><button data-f="def">Defaulted</button></div></div>
+  <table class="tbl"><thead><tr><th>Agent</th><th>Score</th><th class="r hm">Repaid</th><th class="r">Line</th><th class="r hm">Status</th></tr></thead><tbody id="agBody"></tbody></table>
+</div></section>
+
+<section id="faq" class="band" style="margin-top:46px"><div class="wrap">
+  <h2 data-r>Questions</h2>
+  <div class="faq">
+    <details><summary>What is Rootline?</summary><p>A working simulation of a credit protocol for AI agents. Agents borrow play dollars from a pool, backers stake behind them, and every repayment builds a public record. Nothing here uses real money or a real blockchain.</p></details>
+    <details><summary>How does an agent's score work?</summary><p>Scores run from 300 to 850. They rise with each on-time repayment, more for larger and longer loans, and for a longer clean history. A default drops an agent to the floor and closes its line.</p></details>
+    <details><summary>What happens when an agent defaults?</summary><p>Its backer's stake repays the pool in full, so lenders lose nothing. The backer loses that stake, and the agent is marked as defaulted for good.</p></details>
+    <details><summary>How do lenders earn?</summary><p>Every loan pays a fee of 1% per 30 days. Half goes to the pool's lenders in proportion to their deposits, a quarter to the agent's backer, and a quarter to the treasury.</p></details>
+    <details><summary>Where does my play money come from?</summary><p>Opening an account gives you $1,000 in play dollars. If you run low, the account panel has a faucet you can use once every five minutes.</p></details>
+  </div>
+</div></section>
+</main>
+<footer><div class="wrap"><span>Rootline · a simulation of agent credit · play money only, no real funds or chain</span><button id="resetBtn">reset simulation</button></div></footer>
+
+<div class="modal" id="modal"><div class="mbg" data-close></div><div class="mbox" id="mbox"></div></div>
+<aside class="drawer" id="drawer" aria-label="Your account"></aside>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ UTIL ============ */
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const rnd=(a,b)=>a+Math.random()*(b-a),ri=(a,b)=>Math.floor(rnd(a,b+1)),pick=a=>a[Math.floor(Math.random()*a.length)];
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const usd=(n,d=2)=>(n<0?'-':'')+'$'+Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const usd0=n=>'$'+Math.round(n).toLocaleString('en-US');
+const int=n=>Math.round(n).toLocaleString('en-US');
+const DAY=10; // ticks per sim day
+const NAMES=['Quill','Ledgerbot','Arbor','Tally','Fern','Moss','Cinder','Juniper','Rook','Pallas','Sable','Vesper','Oriel','Halcyon','Marlo','Bramble','Wren','Tamsin','Corvid','Ilex','Nimbus','Sorrel','Thimble','Ardent','Lumen','Gale','Kestrel','Birch','Opal','Sprig'];
+const SUFF=['-7','-v2','.ai','-mini','-pro','','-01','-x'];
+const SPONSORS=['treasury','hollow.vault','oakfund','sapling dao','canopy cap','rootstock','grove.xyz'];
+let toneOn=true;try{toneOn=localStorage.getItem('rl-sfx')!=='0'}catch(e){}
+let AC=null;function ac(){if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)()}catch(e){return null}}if(AC.state==='suspended')AC.resume();return AC}
+function tone(f,d=.12,type='sine',v=.04,w=0){if(!toneOn)return;const a=ac();if(!a)return;const o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.value=f;const t=a.currentTime+w;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g).connect(a.destination);o.start(t);o.stop(t+d+.02)}
+const SFX={leaf:()=>tone(ri(880,1320),.18,'sine',.018),ok:()=>{tone(660,.12,'triangle',.04);tone(990,.2,'triangle',.04,.08)},bad:()=>tone(180,.3,'sawtooth',.03),click:()=>tone(1200,.03,'square',.012)};
+function setSfx(){$('#sw').style.display=toneOn?'':'none';$('#sfxBtn').classList.toggle('on',toneOn)}
+$('#sfxBtn').onclick=()=>{toneOn=!toneOn;try{localStorage.setItem('rl-sfx',toneOn?'1':'0')}catch(e){}setSfx();if(toneOn)SFX.ok()};setSfx();
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),2800)}
+
+/* ============ STATE ============ */
+let S=null;
+function fresh(){return {block:100640000,tick:0,agents:[],events:[],pool:{deposits:5200,lenders:{bot:5200},youDeposit:0,youDepAt:0,youEarned:0},stats:{repaid:0,repN:0,loans:0,lent:0,lost:0,defaults:0},treasury:0,you:null,seq:1}}
+try{S=JSON.parse(localStorage.getItem('rootline'))}catch(e){}
+if(!S||!S.agents){S=fresh();seed()}
+function save(){try{localStorage.setItem('rootline',JSON.stringify(S))}catch(e){}}
+function newAgent(o){return Object.assign({id:S.seq++,name:pick(NAMES)+pick(SUFF),owner:'bot',temper:pick(['careful','balanced','bold']),line:5,stake:5,backer:'treasury',youStake:0,score:300,repN:0,repAmt:0,borrowN:0,loan:null,state:'active',born:S.tick,hist:[],log:[],feesToBacker:0},o)}
+function seed(){for(let i=0;i<34;i++){const a=newAgent({});const n=ri(0,180);a.repN=n;a.repAmt=n*rnd(4,9);a.borrowN=n;S.stats.repN+=n;S.stats.repaid+=a.repAmt;S.stats.loans+=n;S.stats.lent+=a.repAmt*.99;
+  if(n>40&&Math.random()<.5){a.line=pick([25,50,100,250]);a.stake=a.line;a.backer=pick(SPONSORS.slice(1))}a.score=calcScore(a);for(let k=0;k<20;k++)a.hist.push(rnd(2,a.line));S.agents.push(a)}
+  S.stats.repN+=4400;S.stats.repaid+=31800;S.stats.loans+=4430;S.stats.lent+=32100;S.stats.defaults=3;
+  for(let i=0;i<3;i++){const a=newAgent({state:'defaulted',score:300});a.repN=ri(0,6);S.agents.push(a)}}
+function calcScore(a){if(a.state==='defaulted')return 300;const base=300+Math.min(420,Math.log2(1+a.repN)*48)+Math.min(80,Math.log10(1+a.repAmt)*26)+Math.min(50,(S.tick-a.born)/DAY*.5);return Math.round(Math.min(850,base))}
+const temperP={careful:{rel:.995,borrow:.06,size:.55},balanced:{rel:.985,borrow:.11,size:.75},bold:{rel:.965,borrow:.18,size:1}};
+
+/* ============ EVENTS ============ */
+const evQ=[];
+function ev(kind,a,amt,extra){const e={b:S.block,k:kind,a:a?a.name:'—',id:a?a.id:0,amt,x:extra||''};S.events.unshift(e);if(S.events.length>60)S.events.length=60;evQ.push(e);if(a){a.log.unshift({b:S.block,k:kind,amt});if(a.log.length>30)a.log.length=30}}
+
+/* ============ SIM ============ */
+function step(){S.tick++;S.block+=ri(1,4);
+  for(const a of S.agents){if(a.state!=='active')continue;const T=temperP[a.temper];
+    if(a.loan&&a.loan.manual){if(!a.loan.warned&&S.tick>=a.loan.due){a.loan.warned=1;toast(`${a.name}'s loan is due. Repay within 2 sim days or it defaults.`);SFX.bad()}if(S.tick>=a.loan.due+2*DAY)defaultA(a)}
+    else if(a.loan){if(S.tick>=a.loan.due){const rel=Math.min(.999,T.rel+Math.min(.012,a.repN*.0002));
+        if(Math.random()<rel){repay(a)}else defaultA(a)}}
+    else if(!a.manual&&Math.random()<T.borrow){const amt=Math.max(1,Math.round(a.line*rnd(.3,1)*T.size*100)/100);if(amt<=poolFree()){const term=pick([1,1,1,7,7,30]);a.loan={amt,start:S.tick,due:S.tick+term*DAY/ (term>7?6:term>1?3:1),term,fee:Math.max(.01,amt*.01*term/30)};a.borrowN++;S.stats.loans++;S.stats.lent+=amt;a.hist.push(amt);if(a.hist.length>40)a.hist.shift();ev('borrow',a,amt)}}}
+  if(Math.random()<.035){const a=newAgent({});S.agents.push(a);ev('register',a,0);setTimeout(()=>{if(a.state==='active'){ev('vouch',a,5,'treasury')}},800)}
+  if(Math.random()<.02){const c=S.agents.filter(a=>a.state==='active'&&a.owner==='bot'&&a.repN>20&&a.line<100);if(c.length){const a=pick(c);const sp=pick(SPONSORS.slice(1));a.line=pick([25,50,100]);a.stake=a.line;a.backer=sp;ev('sponsor',a,a.line,sp)}}
+  if(Math.random()<.05){const amt=ri(20,200);S.pool.deposits+=amt;S.pool.lenders.bot+=amt}
+}
+function poolFree(){const out=S.agents.reduce((s,a)=>s+(a.loan?a.loan.amt:0),0);return S.pool.deposits-out}
+function repay(a){const l=a.loan;a.loan=null;a.repN++;a.repAmt+=l.amt;S.stats.repN++;S.stats.repaid+=l.amt+l.fee;
+  const toLenders=l.fee*.5,toBacker=l.fee*.25;S.treasury+=l.fee*.25;
+  if(S.pool.youDeposit>0&&S.pool.deposits>0){const share=S.pool.youDeposit/S.pool.deposits*toLenders;S.pool.youEarned+=share;if(S.you)S.you.bal+=share}
+  if(a.youStake>0&&S.you){const share=toBacker*(a.youStake/a.stake);S.you.bal+=share;a.feesToBacker+=share;S.you.backEarned=(S.you.backEarned||0)+share}
+  a.score=calcScore(a);ev('repaid',a,l.amt+l.fee);growLeaf(a,l.amt+l.fee)}
+function defaultA(a){const l=a.loan;a.loan=null;a.state='defaulted';a.score=300;S.stats.defaults++;
+  const youLoss=a.youStake>0?Math.min(a.youStake,l.amt):0;if(youLoss&&S.you){S.you.lost=(S.you.lost||0)+youLoss;toast(`${a.name} defaulted. Your stake of ${usd(a.youStake)} paid the loan.`);SFX.bad()}
+  ev('default',a,l.amt,a.backer+' stake paid');if(a.owner==='you'&&S.you){toast(`Your agent ${a.name} defaulted. Its backer paid the pool.`);SFX.bad();if(a.bond){a.bond=0}}}
+
+/* ============ VOXEL TREE ============ */
+const tc=$('#tree'),tx=tc.getContext('2d');let VOX=[],LEAVES=[],leafShown=0,leafTarget=0,popping=new Map(),tw=0,th=0,cam={s:9};
+function buildTree(){const V=[],L=[];const put=(x,y,z,c,leaf)=>{(leaf?L:V).push({x,y,z,c})};
+  // planter
+  for(let x=-9;x<=9;x++)for(let y=-6;y<=6;y++){const edge=Math.abs(x)===9||Math.abs(y)===6;for(let z=0;z<3;z++){if(!edge&&z<2)continue;put(x,y,z,edge?(z===2?'#8a6440':'#6b4a2b'):'#2e2418')}}
+  // trunk path
+  let pts=[[0,0,3]],x=0,y=0,z=3;const trunkC=['#8b2a22','#a33a2c','#7a2219'];
+  for(let i=0;i<16;i++){z++;if(i>3&&i<12){x+=i%3===0?1:0;y+=i%4===1?-1:0}put(x,y,z,trunkC[i%3]);put(x+1,y,z,trunkC[(i+1)%3]);if(i<6)put(x,y+1,z,trunkC[(i+2)%3]);pts.push([x,y,z])}
+  const branches=[[[-1,0],7,[-9,2,13]],[[1,0],10,[9,-3,17]],[[0,1],12,[-3,7,19]],[[0,-1],14,[4,-7,22]],[[0,0],16,[1,0,25]]];
+  const centers=[];
+  branches.forEach(([d,startI,end])=>{const s=pts[Math.min(startI,pts.length-1)];let [bx,by,bz]=s;const [ex,ey,ez]=end;const n=Math.max(Math.abs(ex-bx),Math.abs(ey-by),Math.abs(ez-bz));
+    for(let k=1;k<=n;k++){const px=Math.round(bx+(ex-bx)*k/n),py=Math.round(by+(ey-by)*k/n),pz=Math.round(bz+(ez-bz)*k/n);put(px,py,pz,trunkC[k%3])}centers.push([ex,ey,ez+2])});
+  centers.push([-5,-2,20],[6,4,21]);
+  const greens=['#3f8a55','#4f9a62','#5aa86b','#6fb97c','#83c98d','#4a925c'];
+  const seen=new Set();
+  centers.forEach(([cx,cy,cz],ci)=>{const rx=ci===4?7:6,ry=ci===4?6:5,rz=3;for(let x=-rx;x<=rx;x++)for(let y=-ry;y<=ry;y++)for(let z=-rz;z<=rz;z++){const d=(x*x)/(rx*rx)+(y*y)/(ry*ry)+(z*z)/(rz*rz);if(d>1||(d>.55&&Math.random()<.35))continue;
+      const k=(cx+x)+','+(cy+y)+','+(cz+z);if(seen.has(k))continue;seen.add(k);L.push({x:cx+x,y:cy+y,z:cz+z,c:pick(greens),d:d+ci*.08+Math.random()*.25})}});
+  L.sort((a,b)=>a.d-b.d);VOX=V;LEAVES=L}
+function sizeTree(){const r=devicePixelRatio||1;tw=tc.clientWidth;th=tc.clientHeight;tc.width=tw*r;tc.height=th*r;tx.setTransform(r,0,0,r,0,0);cam.s=Math.max(5,Math.min(11,tw/72));drawTree()}
+let rot=0,rotV=0,drag=null,hov=null,ptr=null,drawn=[];
+function initLeaves(){leafShown=leafTarget=Math.min(LEAVES.length,Math.floor(S.stats.repN/8));const pool=S.agents.filter(a=>a.repN>0);
+  LEAVES.forEach((l,i)=>{if(i<leafShown&&pool.length){const a=pick(pool);l.who={id:a.id,name:a.name,amt:rnd(2,Math.min(9,a.line+.5)),b:S.block-ri(50,40000)}}else l.who=null})}
+function rp(x,y){const c=Math.cos(rot),s=Math.sin(rot);return [x*c-y*s,x*s+y*c]}
+function P(x,y,z){const s=cam.s;return [tw/2+(x-y)*s*.866,th*.8+(x+y)*s*.5-z*s]}
+function iso(v){const [x,y]=rp(v.x,v.y);return P(x,y,v.z+1)}
+function rgbOf(v){if(!v.rgb){const n=parseInt(v.c.slice(1),16);v.rgb=[n>>16,n>>8&255,n&255]}return v.rgb}
+function col(c,f){return `rgb(${Math.min(255,c[0]*f)|0},${Math.min(255,c[1]*f)|0},${Math.min(255,c[2]*f)|0})`}
+function poly(p,fill){tx.fillStyle=fill;tx.beginPath();tx.moveTo(p[0][0],p[0][1]);for(let i=1;i<p.length;i++)tx.lineTo(p[i][0],p[i][1]);tx.closePath();tx.fill()}
+const CORN=[[1,1],[1,-1],[-1,-1],[-1,1]];
+function cube(v,sc,lift,glow,C,Sn){const cx=v.x*C-v.y*Sn,cy=v.x*Sn+v.y*C,h=.5*sc,z0=v.z+(1-sc)*.5,z1=z0+sc;
+  const ux=C*h,uy=Sn*h,wx=-Sn*h,wy=C*h;const k=CORN.map(([a,b])=>[cx+a*ux+b*wx,cy+a*uy+b*wy]);
+  const T=k.map(p=>{const q=P(p[0],p[1],z1);q[1]-=lift;return q}),B=k.map(p=>{const q=P(p[0],p[1],z0);q[1]-=lift;return q});
+  const c=glow?[236,214,140]:rgbOf(v);
+  for(let i=0;i<4;i++){const j=(i+1)%4,nx=((k[i][0]+k[j][0])/2-cx)/h,ny=((k[i][1]+k[j][1])/2-cy)/h;if(nx+ny>1e-4)poly([T[i],T[j],B[j],B[i]],col(c,.72+.1*(ny-nx)))}
+  poly(T,col(c,1.18));return [(T[0][0]+T[2][0])/2,(T[0][1]+T[2][1])/2]}
+function drawTree(){if(!tw)return;tx.clearRect(0,0,tw,th);
+  const g=tx.createRadialGradient(tw/2,th*.6,10,tw/2,th*.6,tw*.45);g.addColorStop(0,'rgba(40,30,16,.42)');g.addColorStop(1,'rgba(21,20,15,0)');tx.fillStyle=g;tx.fillRect(0,0,tw,th);
+  const C=Math.cos(rot),Sn=Math.sin(rot),n=Math.floor(leafShown),items=VOX.slice();for(let i=0;i<n;i++){LEAVES[i].leaf=true;items.push(LEAVES[i])}
+  for(const v of items)v._d=v.x*C-v.y*Sn+v.x*Sn+v.y*C+v.z;items.sort((a,b)=>a._d-b._d);
+  const now=performance.now(),hid=hov&&hov.who?hov.who.id:-1;drawn.length=0;
+  for(const v of items){if(v.leaf){let sc=1,lift=Math.sin(now/1400+v.x*.4+v.y*.3)*.6*(v.z>15?1:0);const p=popping.get(v);if(p){const t=(now-p)/500;if(t>=1)popping.delete(v);else{sc=.2+.8*Math.min(1,t*1.3);lift-=(1-t)*14}}
+      const c=cube(v,sc,lift,v.who&&v.who.id===hid,C,Sn);drawn.push([v,c[0],c[1]])}else cube(v,1,0,false,C,Sn)}}
+function leafAt(x,y){for(let i=drawn.length-1;i>=0;i--){const d=drawn[i];if(Math.hypot(d[1]-x,d[2]-y)<cam.s*.8)return d[0]}return null}
+function growLeaf(a,amt){leafTarget=Math.min(LEAVES.length,leafTarget+1);if(leafTarget>leafShown){const v=LEAVES[Math.floor(leafShown)];if(v){v.who={id:a.id,name:a.name,amt:amt||0,b:S.block};popping.set(v,performance.now());if(Math.random()<.35)SFX.leaf();const [px,py]=iso(v);const el=document.createElement('div');el.className='leafpop';el.textContent='+1 '+a.name;el.style.left=px+'px';el.style.top=(py-30)+'px';$('.tree-wrap').appendChild(el);setTimeout(()=>el.remove(),1600)}leafShown=leafTarget}}
+const tip=$('#ttip');let tipFor=null;
+function showTip(){if(hov&&hov.who&&ptr){if(tipFor!==hov){tipFor=hov;const a=S.agents.find(x=>x.id===hov.who.id);tip.innerHTML=`<b>${esc(hov.who.name)}</b> repaid ${usd(hov.who.amt)}<br><span>block ${hov.who.b} · score ${a?a.score:'—'} · click to open</span>`}tip.style.left=ptr[0]+'px';tip.style.top=ptr[1]+'px';tip.classList.add('on');tc.style.cursor='pointer'}else{tip.classList.remove('on');tipFor=null;tc.style.cursor=drag?'grabbing':'grab'}}
+function ptOf(e){const r=tc.getBoundingClientRect();return [e.clientX-r.left,e.clientY-r.top]}
+tc.addEventListener('pointerdown',e=>{drag={x:e.clientX,moved:0};rotV=0;try{tc.setPointerCapture(e.pointerId)}catch(_){}});
+tc.addEventListener('pointermove',e=>{ptr=ptOf(e);if(drag){const dx=e.clientX-drag.x;drag.x=e.clientX;drag.moved+=Math.abs(dx);rot+=dx*.01;rotV=dx*.01;if(drag.moved>5)hov=null}});
+tc.addEventListener('pointerup',e=>{const p=ptOf(e);if(drag&&drag.moved<5){const l=leafAt(p[0],p[1]);if(l&&l.who){SFX.click();openAgent(l.who.id)}}else if(drag&&drag.moved>30)$('#thint').style.opacity=.4;drag=null});
+tc.addEventListener('pointercancel',()=>{drag=null});
+tc.addEventListener('pointerleave',()=>{if(!drag){ptr=null;hov=null}});
+if(matchMedia('(hover:none)').matches)$('#thint').textContent='drag to turn · tap a leaf';
+function treeLoop(){if(!drag){rot+=rotV;rotV*=.94;if(!ptr&&Math.abs(rotV)<.002)rot+=.0018}drawTree();hov=ptr&&!drag?leafAt(ptr[0],ptr[1]):null;showTip();requestAnimationFrame(treeLoop)}
+buildTree();initLeaves();
+
+/* ============ FLOW ANIMATION ============ */
+const FLOW={run:0,user:false};
+const PATHS=[['p1','#c9a35a'],['p2','#ece6d6'],['p3','#7fbf98'],['p4','#c8664f']];
+function hiStep(i){$$('#steps .step').forEach((s,k)=>s.classList.toggle('act',k===i))}
+function animP(i,id){return new Promise(res=>{const [pid,c]=PATHS[i];const p=document.getElementById(pid),L=p.getTotalLength(),tok=$('#tok'),t0=performance.now(),dur=i===3?1900:1100;tok.setAttribute('fill',c);hiStep(i);
+  (function f(t){if(FLOW.run!==id)return res(false);const k=Math.min(1,(t-t0)/dur),e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;const pt=p.getPointAtLength(L*e);tok.setAttribute('cx',pt.x);tok.setAttribute('cy',pt.y);tok.setAttribute('opacity',1);if(k<1)requestAnimationFrame(f);else res(true)})(t0)})}
+const waitF=(ms,id)=>new Promise(r=>setTimeout(()=>r(FLOW.run===id),ms));
+function hot(n,c){const r=document.querySelector('#'+n+' rect');r.classList.add(c);setTimeout(()=>r.classList.remove(c),900)}
+async function scenario(kind,id){if(!await animP(0,id))return false;hot('nA','hg');if(!await animP(1,id))return false;
+  if(kind==='repay'){if(!await animP(2,id))return false;hot('nP','hg');if(FLOW.user)SFX.ok()}
+  else{hot('nA','hr');if(FLOW.user)SFX.bad();if(!await waitF(400,id))return false;if(!await animP(3,id))return false;hot('nP','hg')}
+  $('#flowMsg').textContent=kind==='repay'?"Repaid: the pool gets its money back plus a fee, and the agent's score goes up.":"Defaulted: the backer's stake pays the pool in full. Lenders lose nothing.";return true}
+async function flowLoop(kind,user){const id=++FLOW.run;FLOW.user=user;let n=0,k=kind;while(FLOW.run===id){if(!await scenario(k||(n%4===3?'default':'repay'),id))return;FLOW.user=false;k=null;n++;if(!await waitF(1400,id))return}}
+$('#fRepay').onclick=()=>{ac();flowLoop('repay',true)};$('#fDef').onclick=()=>{ac();flowLoop('default',true)};
+$$('#steps .step').forEach((s,i)=>{s.style.cursor='pointer';s.onclick=()=>{SFX.click();const id=++FLOW.run;animP(i,id).then(ok=>{if(ok)waitF(1500,id).then(go=>{if(go)flowLoop(null,false)})})}});
+flowLoop(null,false);
+let dashOff=0;setInterval(()=>{dashOff=(dashOff-1)%18;$('#p1').setAttribute('stroke-dashoffset',dashOff);$('#p4').setAttribute('stroke-dashoffset',dashOff)},50);
+
+/* ============ RENDER ============ */
+function countTo(el,to,fmt){const from=el._v??to*.9;el._v=to;const t0=performance.now();(function f(t){const k=Math.min(1,(t-t0)/700),e=1-Math.pow(1-k,3);el.textContent=fmt(from+(to-from)*e);if(k<1)requestAnimationFrame(f)})(t0)}
+function renderStats(){countTo($('#sRepaid'),S.stats.repaid,usd0);$('#sRepaidN').textContent=int(S.stats.repN)+' repayments';countTo($('#sLoans'),S.stats.loans,int);$('#sLent').textContent=usd0(S.stats.lent)+' lent out';
+  const def=S.agents.filter(a=>a.state==='defaulted').length;$('#sAgents').textContent=int(S.agents.length);$('#sAgentsSub').textContent=`${S.agents.filter(a=>a.loan).length} borrowing now · ${S.stats.defaults} defaulted`;
+  $('#sLost').textContent='$0';$('#sLostSub').textContent=`${S.stats.defaults} defaults, paid by their backers' stake`;
+  $('#repCount').textContent=int(S.stats.repN)+' repayments';$('#treeNote').textContent=leafShown>=LEAVES.length?`The tree is full: ${int(LEAVES.length)} leaves.`:`${int(Math.floor(leafShown))} leaves so far. Each new repayment grows one.`;
+  $('#blk').textContent=int(S.block)}
+const EVN={borrow:'borrow',repaid:'repaid',default:'default',vouch:'vouch',sponsor:'sponsor',register:'register',back:'back',lend:'deposit',withdraw:'withdraw'};
+let evLimit=10;
+function renderEvents(){const rows=S.events.slice(0,evLimit);const fresh=new Set(evQ.splice(0));
+  $('#evBody').innerHTML=rows.map(e=>`<tr class="${fresh.has(e)?'new':''}${e.id?' click':''}" data-id="${e.id}"><td class="mono">${e.b}</td><td><span class="ent ${e.k}">${EVN[e.k]||e.k}</span>${e.x?` <span style="color:var(--mut);font-size:12.5px">· ${esc(e.x)}</span>`:''}</td><td class="hm">${esc(e.a)}</td><td class="r ${e.k==='repaid'?'pos':e.k==='default'?'neg':''}">${e.amt?(e.k==='repaid'?'+':'')+usd(e.amt):e.k==='sponsor'||e.k==='register'?'':'—'}</td></tr>`).join('');
+  $('#evCount').textContent=`${int(S.block-100640000)} blocks · last ${rows.length}`}
+let sortBy='score',flt='all',qy='';
+function renderAgents(){let L=S.agents.slice();if(flt==='mine')L=L.filter(a=>a.owner==='you'||a.youStake>0);if(flt==='def')L=L.filter(a=>a.state==='defaulted');if(qy)L=L.filter(a=>a.name.toLowerCase().includes(qy)||String(a.id)===qy);
+  L.sort(sortBy==='score'?(a,b)=>b.score-a.score:sortBy==='repaid'?(a,b)=>b.repN-a.repN:sortBy==='line'?(a,b)=>b.line-a.line:(a,b)=>b.id-a.id);
+  $('#agBody').innerHTML=L.slice(0,25).map(a=>`<tr class="click" data-id="${a.id}"><td><span class="mono" style="color:var(--dim);margin-right:8px">#${a.id}</span>${esc(a.name)} ${a.owner==='you'?'<span class="tag you">YOURS</span>':a.youStake?'<span class="tag you">BACKED</span>':''}</td>
+    <td><span class="score"><span class="bar"><i style="width:${(a.score-300)/550*100}%"></i></span>${a.score}</span></td><td class="r hm">${int(a.repN)}</td><td class="r">${usd0(a.line)}</td>
+    <td class="r hm">${a.state==='defaulted'?'<span class="tag def">DEFAULTED</span>':a.loan?'<span class="tag bor">BORROWING</span>':'<span style="color:var(--mut)">idle</span>'}</td></tr>`).join('')||'<tr><td colspan="5" style="color:var(--mut);padding:20px 0">No agents match.</td></tr>'}
+$('#sort').onclick=e=>{const b=e.target.closest('button');if(!b)return;sortBy=b.dataset.s;$$('#sort button').forEach(x=>x.classList.toggle('on',x===b));renderAgents()};
+$('#flt').onclick=e=>{const b=e.target.closest('button');if(!b)return;flt=b.dataset.f;$$('#flt button').forEach(x=>x.classList.toggle('on',x===b));renderAgents()};
+$('#q').oninput=e=>{qy=e.target.value.trim().toLowerCase();renderAgents()};
+$('#agBody').onclick=e=>{const r=e.target.closest('tr[data-id]');if(r)openAgent(+r.dataset.id)};
+$('#evBody').onclick=e=>{const r=e.target.closest('tr[data-id]');if(r&&+r.dataset.id)openAgent(+r.dataset.id)};
+$('#moreEv').onclick=()=>{evLimit=evLimit===10?40:10;$('#moreEv').textContent=evLimit===10?'See more activity →':'Show less ↑';renderEvents()};
+$('#idGo').onclick=()=>{const id=+$('#idIn').value;const a=S.agents.find(x=>x.id===id);if(a)openAgent(id);else toast('No agent with that id. Try one from the agents table.')};
+$('#idIn').addEventListener('keydown',e=>{if(e.key==='Enter')$('#idGo').click()});
+$('#copyBtn').onclick=()=>{const t=$('#skill').textContent;const ok=()=>{$('#copyBtn').textContent='Copied';setTimeout(()=>$('#copyBtn').textContent='Copy',1500)};try{navigator.clipboard.writeText(t).then(ok,()=>{selectText($('#skill'));toast('Press Ctrl+C to copy')})}catch(e){selectText($('#skill'))}};
+function selectText(el){const r=document.createRange();r.selectNodeContents(el);const s=getSelection();s.removeAllRanges();s.addRange(r)}
+
+/* ============ MODALS ============ */
+function modal(html,wide){$('#mbox').className='mbox'+(wide?' wide':'');$('#mbox').innerHTML=`<button class="ib x" data-close aria-label="close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 5l14 14M19 5 5 19"/></svg></button>`+html;$('#modal').classList.add('open')}
+function closeModal(){$('#modal').classList.remove('open');openAg=null}
+document.addEventListener('click',e=>{if(e.target.closest('[data-close]'))closeModal();const a=e.target.closest('[data-act]');if(a){e.preventDefault();ac();act(a.dataset.act,a.dataset)}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();$('#drawer').classList.remove('open')}});
+function act(k,d){if(k==='account')return S.you?openDrawer():openAccount();if(k==='create')return needAcct()||openCreate();if(k==='lend')return needAcct()||openLend();if(k==='backpick'){toast('Pick an agent to back');document.getElementById('agents').scrollIntoView({behavior:'smooth'});return}if(k==='back')return needAcct()||openBack(+d.id)}
+function needAcct(){if(S.you)return false;openAccount(true);return true}
+function openAccount(req){modal(`<h3>Open your account</h3><p class="mp">${req?'You need an account first. ':''}Pick a name. Your account starts with $1,000 in play dollars.</p>
+  <div class="fld"><label for="accName">Display name</label><input id="accName" maxlength="20" placeholder="e.g. alder"></div>
+  <p style="font-size:12.5px;color:var(--mut)">Everything is simulated. No email, wallet or real money.</p><div class="mact"><button class="btn btn-c" id="accGo">Open account</button></div>`);
+  $('#accName').focus();$('#accGo').onclick=()=>{const n=$('#accName').value.trim()||'alder';S.you={name:n.slice(0,20),bal:1000,faucetAt:0,backEarned:0,lost:0};save();closeModal();renderAcct();SFX.ok();toast(`Welcome, ${S.you.name}. $1,000 in play dollars added.`);openDrawer()};
+  $('#accName').addEventListener('keydown',e=>{if(e.key==='Enter')$('#accGo').click()})}
+function openCreate(){let temper='careful';modal(`<h3>Create an agent</h3><p class="mp">Register an agent and the treasury opens a $5 first line. It costs a refundable $5 bond.</p>
+  <div class="fld"><label for="agName">Agent name</label><input id="agName" maxlength="20" value="${pick(NAMES)}${pick(SUFF)}"></div>
+  <div class="fld"><label>Temperament</label><div class="opts" id="tmp"><button class="opt on" data-t="careful"><b>Careful</b><small>repays 99.5% · borrows rarely</small></button><button class="opt" data-t="balanced"><b>Balanced</b><small>repays 98.5% · borrows often</small></button><button class="opt" data-t="bold"><b>Bold</b><small>repays 96.5% · borrows big</small></button></div></div>
+  <div class="mact"><button class="btn btn-c" id="cGo">Register · $5 bond</button></div>`);
+  $('#tmp').onclick=e=>{const b=e.target.closest('.opt');if(!b)return;temper=b.dataset.t;$$('#tmp .opt').forEach(x=>x.classList.toggle('on',x===b));SFX.click()};
+  $('#cGo').onclick=()=>{if(S.you.bal<5)return toast('Not enough play dollars');S.you.bal-=5;const a=newAgent({name:($('#agName').value.trim()||'agent').slice(0,20),owner:'you',temper,bond:5});S.agents.push(a);ev('register',a,0,'by '+S.you.name);ev('vouch',a,5,'treasury');save();closeModal();SFX.ok();toast(`${a.name} is registered with a $5 line.`);renderAll();openAgent(a.id)}}
+function openLend(){const p=S.pool;const share=p.deposits?p.youDeposit/p.deposits*100:0;modal(`<h3>Fund the pool</h3><p class="mp">Deposit play dollars. Lenders split 50% of every fee by share of the pool.</p>
+  <div class="kv"><div><small>Pool size</small><b>${usd0(p.deposits)}</b></div><div><small>Your deposit</small><b>${usd0(p.youDeposit)}</b></div><div><small>Your share</small><b>${share.toFixed(2)}%</b></div><div><small>Earned</small><b class="pos">${usd(p.youEarned)}</b></div></div>
+  <div class="fld"><label for="lAmt">Amount</label><input id="lAmt" type="number" min="1" step="1" value="100"><div class="hint">Balance ${usd(S.you.bal)} · withdrawing within 7 sim days of a deposit costs 0.5%</div></div>
+  <div class="mact"><button class="btn btn-c" id="lDep">Deposit</button><button class="btn btn-o" id="lWd" ${p.youDeposit>0?'':'disabled'}>Withdraw all</button></div>`);
+  $('#lDep').onclick=()=>{const v=+$('#lAmt').value;if(!(v>0))return toast('Enter an amount');if(v>S.you.bal)return toast('Not enough play dollars');S.you.bal-=v;p.youDeposit+=v;p.deposits+=v;p.youDepAt=S.tick;ev('lend',null,v,S.you.name);save();SFX.ok();toast(`Deposited ${usd(v)} into the pool`);renderAll();openLend()};
+  $('#lWd').onclick=()=>{let v=p.youDeposit;const early=S.tick-p.youDepAt<7*DAY;const fee=early?v*.005:0;p.deposits-=v;p.youDeposit=0;S.you.bal+=v-fee;ev('withdraw',null,v,S.you.name);save();SFX.ok();toast(`Withdrew ${usd(v-fee)}${early?' (0.5% early fee)':''}`);renderAll();openLend()}}
+function openBack(id){const a=S.agents.find(x=>x.id===id);if(!a)return;if(a.state==='defaulted')return toast('This agent defaulted and can\'t be backed.');
+  modal(`<h3>Back ${esc(a.name)}</h3><p class="mp">Your stake raises its line by the same amount. You earn a share of the quarter of every fee it pays. If it defaults, your stake pays its loan.</p>
+  <div class="kv"><div><small>Score</small><b>${a.score}</b></div><div><small>Repaid</small><b>${int(a.repN)}</b></div><div><small>Line now</small><b>${usd0(a.line)}</b></div><div><small>Your stake</small><b>${usd0(a.youStake)}</b></div></div>
+  <div class="fld"><label>Stake</label><div class="opts" id="stk">${[25,50,100,250,500].map((v,i)=>`<button class="opt${i?'':' on'}" data-v="${v}"><b>${usd0(v)}</b><small>line → ${usd0(a.line+v)}</small></button>`).join('')}</div><div class="hint">Balance ${usd(S.you.bal)}</div></div>
+  <div class="mact"><button class="btn btn-c" id="bGo">Back with $25</button>${a.youStake?`<button class="btn btn-o" id="bOut" ${a.loan?'disabled title="wait until its loan is repaid"':''}>Withdraw my stake${a.loan?' (after repay)':''}</button>`:''}</div>`);
+  let v=25;$('#stk').onclick=e=>{const b=e.target.closest('.opt');if(!b)return;v=+b.dataset.v;$$('#stk .opt').forEach(x=>x.classList.toggle('on',x===b));$('#bGo').textContent='Back with '+usd0(v);SFX.click()};
+  $('#bGo').onclick=()=>{if(v>S.you.bal)return toast('Not enough play dollars');if(a.line+v>1000)return toast('Lines top out at $1,000');S.you.bal-=v;a.youStake+=v;a.stake+=v;a.line+=v;if(a.backer==='treasury')a.backer=S.you.name;ev('back',a,v,S.you.name);save();SFX.ok();toast(`You backed ${a.name}. Its line is now ${usd0(a.line)}.`);renderAll();openAgent(a.id)};
+  const bo=$('#bOut');if(bo)bo.onclick=()=>{const s=a.youStake;a.stake-=s;a.line=Math.max(5,a.line-s);a.youStake=0;S.you.bal+=s;save();SFX.ok();toast(`Withdrew your ${usd0(s)} stake`);renderAll();openAgent(a.id)}}
+let openAg=null,pAmt=null,pTerm=1;
+function dueTicks(t){return t*DAY/(t>7?6:t>1?3:1)}
+function pFee(x){return Math.max(.01,x*.01*pTerm/30)}
+function pilotHTML(a){let h=`<div class="pilot"><div class="pilot-h"><b>Pilot</b><div class="seg" id="pMode"><button class="${a.manual?'':'on'}" data-m="0">Autopilot</button><button class="${a.manual?'on':''}" data-m="1">Manual</button></div></div>`;
+  if(!a.manual)h+=`<p class="ph">It borrows and repays on its own, by its ${a.temper} temperament. Switch to manual to fly it yourself.</p>`;
+  else if(a.loan&&!a.loan.manual)h+=`<p class="ph">An autopilot loan of ${usd(a.loan.amt)} is still open. It will settle on its own, then you're in control.</p>`;
+  else if(a.loan){const total=a.loan.due-a.loan.start,left=a.loan.due-S.tick,late=left<0;
+    h+=`<p class="ph">Open loan <b>${usd(a.loan.amt)}</b> + fee ${usd(a.loan.fee)}. ${late?`<span class="neg">Overdue. It defaults in ${Math.max(0,(a.loan.due+2*DAY-S.tick)/DAY).toFixed(1)} sim days.</span>`:`Due in ${(left/DAY).toFixed(1)} sim days.`}</p><div class="pbar"><i style="width:${Math.min(100,Math.max(0,(1-left/total)*100))}%;${late?'background:var(--red)':''}"></i></div><button class="btn btn-g sm" id="pRepay">Repay ${usd(a.loan.amt+a.loan.fee)}</button>`}
+  else{const amt=Math.min(pAmt??Math.min(a.line,5),a.line);h+=`<div class="prow"><div class="fld" style="flex:1;min-width:140px;margin:0"><label for="pAmt">Borrow, up to ${usd0(a.line)}</label><input id="pAmt" type="number" min="1" max="${a.line}" step="0.5" value="${amt}"></div><div class="fld" style="margin:0"><label>Term</label><div class="seg" id="pTerm">${[1,7,30].map(t=>`<button class="${t===pTerm?'on':''}" data-t="${t}">${t}d</button>`).join('')}</div></div></div><p class="ph" id="pFee">Fee ${usd(pFee(amt))}. The money lands in your balance. Repay by the due date (2 sim days grace) or it defaults.</p><button class="btn btn-g sm" id="pBorrow">Borrow</button>`}
+  return h+'</div>'}
+function wirePilot(a){const pm=$('#pMode');if(pm)pm.onclick=e=>{const b=e.target.closest('button');if(!b)return;a.manual=b.dataset.m==='1';save();SFX.click();toast(a.manual?'Manual mode: you decide when it borrows and repays.':'Autopilot on.');openAgent(a.id)};
+  const pa=$('#pAmt');if(pa)pa.oninput=()=>{pAmt=+pa.value;$('#pFee').firstChild.textContent=`Fee ${usd(pFee(Math.min(+pa.value||0,a.line)))}. The money lands in your balance. Repay by the due date (2 sim days grace) or it defaults.`};
+  const pt=$('#pTerm');if(pt)pt.onclick=e=>{const b=e.target.closest('button');if(!b)return;pTerm=+b.dataset.t;if(pa)pAmt=+pa.value;SFX.click();openAgent(a.id)};
+  const pb=$('#pBorrow');if(pb)pb.onclick=()=>{const v=Math.round(+$('#pAmt').value*100)/100;if(!(v>0))return toast('Enter an amount');if(v>a.line)return toast(`Its line is ${usd0(a.line)}. Back it to raise the line.`);if(v>poolFree())return toast('The pool is short right now');
+    a.loan={amt:v,start:S.tick,due:S.tick+dueTicks(pTerm),term:pTerm,fee:pFee(v),manual:true};a.borrowN++;S.stats.loans++;S.stats.lent+=v;a.hist.push(v);S.you.bal+=v;ev('borrow',a,v,'by you');save();SFX.ok();toast(`${a.name} borrowed ${usd(v)}. Repay within ${pTerm} sim day${pTerm>1?'s':''}.`);renderAll();openAgent(a.id)};
+  const pr=$('#pRepay');if(pr)pr.onclick=()=>{const t=a.loan.amt+a.loan.fee;if(S.you.bal<t)return toast('Not enough play dollars. Try the faucet.');S.you.bal-=t;repay(a);save();SFX.ok();toast(`Repaid. ${a.name}'s score is now ${a.score}.`);renderAll();openAgent(a.id)}}
+function openAgent(id){const a=S.agents.find(x=>x.id===id);if(!a)return;openAg=id;
+  const pct=(a.score-300)/550,ang=Math.PI*(1-pct),gx=60+46*Math.cos(ang),gy=62-46*Math.sin(ang);
+  modal(`<div style="font-family:var(--mono);font-size:12px;color:var(--dim)">AGENT #${a.id} · ${a.owner==='you'?'yours':'backed by '+esc(a.backer)}</div><h3>${esc(a.name)}</h3>
+   <div class="gauge"><svg viewBox="0 0 120 70"><path d="M14 62 A46 46 0 0 1 106 62" fill="none" stroke="#3a382e" stroke-width="8"/><path d="M14 62 A46 46 0 0 1 ${gx.toFixed(1)} ${gy.toFixed(1)}" fill="none" stroke="${a.state==='defaulted'?'#c8664f':'#7fbf98'}" stroke-width="8"/><text x="60" y="58" text-anchor="middle" font-family="EB Garamond" font-size="24" fill="#ece6d6">${a.score}</text></svg>
+     <div><div class="ent ${a.state==='defaulted'?'default':'repaid'}" style="font-size:20px">${a.state==='defaulted'?'defaulted':a.loan?'borrowing now':'in good standing'}</div><div style="font-size:13.5px;color:var(--mut)">${a.temper} temperament · ${int((S.tick-a.born)/DAY)} sim days old</div></div></div>
+   <div class="kv"><div><small>Repaid</small><b>${int(a.repN)}</b></div><div><small>Volume</small><b>${usd0(a.repAmt)}</b></div><div><small>Line</small><b>${usd0(a.line)}</b></div><div><small>Open loan</small><b>${a.loan?usd(a.loan.amt):'—'}</b></div></div>
+   ${a.owner==='you'&&a.state==='active'?pilotHTML(a):''}<canvas class="hist" id="hist"></canvas>
+   <div class="rows">${a.log.slice(0,20).map(l=>`<div><span class="mono" style="color:var(--dim)">${l.b}</span><span class="ent ${l.k}">${EVN[l.k]||l.k}</span><span>${l.amt?usd(l.amt):''}</span></div>`).join('')||'<div><span></span><span style="color:var(--mut)">no entries yet</span><span></span></div>'}</div>
+   <div class="mact">${a.state==='active'?`<button class="btn btn-c" data-act="back" data-id="${a.id}">${a.youStake?'Manage my stake':'Back this agent'}</button>`:''}<button class="btn btn-o" data-act="lend">Lend to the pool</button>${a.owner==='you'&&a.state==='active'&&!a.loan&&a.bond?'<button class="btn btn-o" id="retire">Retire · refund bond</button>':''}</div>`,true);
+  const c=$('#hist'),r=devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;c.width=w*r;c.height=h*r;const x=c.getContext('2d');x.setTransform(r,0,0,r,0,0);const H=a.hist.slice(-40);const mx=Math.max(...H,1);const bw=w/Math.max(H.length,1);
+  H.forEach((v,i)=>{const bh=v/mx*(h-14);x.fillStyle=i===H.length-1?'#7fbf98':'#3f7a58';x.fillRect(i*bw+1,h-bh,bw-2,bh)});x.fillStyle='#9d9686';x.font='11px IBM Plex Mono';x.fillText('loan sizes, oldest → newest',0,10);
+  wirePilot(a);const rt=$('#retire');if(rt)rt.onclick=()=>{a.state='retired';S.you.bal+=a.bond;a.bond=0;save();toast(`${a.name} retired. $5 bond refunded.`);closeModal();renderAll()}}
+
+/* ============ ACCOUNT DRAWER ============ */
+function renderAcct(){const b=$('#acctBtn');if(!S.you){b.className='btn btn-c sm';b.textContent='Open account';return}b.className='btn btn-o sm acct';b.innerHTML=`<span class="dot"></span>${esc(S.you.name)} <b>${usd(S.you.bal)}</b>`;if($('#drawer').classList.contains('open'))renderDrawer()}
+function renderDrawer(){const y=S.you;if(!y)return;const mine=S.agents.filter(a=>a.owner==='you'),backed=S.agents.filter(a=>a.youStake>0),fa=Math.max(0,300000-(Date.now()-(y.faucetAt||0)));
+  $('#drawer').innerHTML=`<button class="ib" style="float:right" id="dClose" aria-label="close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 5l14 14M19 5 5 19"/></svg></button>
+   <div style="color:var(--green);font-size:14px">Your account</div><h3>${esc(y.name)}</h3>
+   <div class="bal"><small>Play balance</small><b>${usd(y.bal)}</b><small>earned backing ${usd(y.backEarned||0)} · lending ${usd(S.pool.youEarned)} · lost to defaults ${usd(y.lost||0)}</small></div>
+   <div class="mact" style="margin-top:0"><button class="btn btn-c sm" data-act="create">Create an agent</button><button class="btn btn-o sm" data-act="lend">Lend</button><button class="btn btn-o sm" id="fau" ${fa?'disabled':''}>${fa?'Faucet in '+Math.ceil(fa/60000)+'m':'Faucet +$250'}</button></div>
+   <div class="dsec"><h4>Your agents <span>${mine.length}</span></h4><div class="dl">${mine.map(a=>`<div data-id="${a.id}"><span>${esc(a.name)} <span style="color:var(--mut)">· ${a.state==='active'?a.score:a.state}</span></span><span>${int(a.repN)} repaid</span></div>`).join('')||'<p style="font-size:13.5px;color:var(--mut)">None yet.</p>'}</div></div>
+   <div class="dsec"><h4>Agents you back <span>${backed.length}</span></h4><div class="dl">${backed.map(a=>`<div data-id="${a.id}"><span>${esc(a.name)}${a.state==='defaulted'?' <span class="neg">· defaulted</span>':''}</span><span>${usd0(a.youStake)} · +${usd(a.feesToBacker)}</span></div>`).join('')||'<p style="font-size:13.5px;color:var(--mut)">None yet.</p>'}</div></div>
+   <div class="dsec"><h4>Pool deposit</h4><div class="dl"><div data-act="lend"><span>${usd(S.pool.youDeposit)}</span><span class="pos">+${usd(S.pool.youEarned)}</span></div></div></div>
+   <p style="margin-top:24px;font-size:12.5px;color:var(--mut)">All balances are play money in a simulation.</p><button class="lnk" style="margin-top:8px;font-size:13px" id="logout">Close account</button>`;
+  $('#dClose').onclick=()=>$('#drawer').classList.remove('open');
+  $('#fau').onclick=()=>{y.bal+=250;y.faucetAt=Date.now();save();SFX.ok();toast('+$250 play dollars');renderAcct();renderDrawer()};
+  $$('#drawer .dl div[data-id]').forEach(d=>d.onclick=()=>{$('#drawer').classList.remove('open');openAgent(+d.dataset.id)});
+  $('#logout').onclick=()=>{S.you=null;S.agents.forEach(a=>{if(a.owner==='you')a.owner='bot';a.youStake=0});S.pool.deposits-=S.pool.youDeposit;S.pool.youDeposit=0;save();$('#drawer').classList.remove('open');renderAll();toast('Account closed')}}
+function openDrawer(){renderDrawer();$('#drawer').classList.add('open')}
+$('#acctBtn').onclick=()=>{ac();S.you?($('#drawer').classList.contains('open')?$('#drawer').classList.remove('open'):openDrawer()):openAccount()};
+
+/* ============ LOOP ============ */
+function renderAll(){renderStats();renderEvents();renderAgents();renderAcct()}
+let ticks=0,speed=1,simT=null,lastRef=0;
+function tickFn(){step();ticks++;renderStats();renderEvents();if(ticks%2===0)renderAgents();renderAcct();const ae=document.activeElement,now=Date.now();
+  if(openAg&&$('#modal').classList.contains('open')&&now-lastRef>1200&&!$('#mbox').querySelector('#stk')&&!(ae&&ae.tagName==='INPUT'&&$('#mbox').contains(ae))){lastRef=now;const sc=$('#mbox').scrollTop;openAgent(openAg);$('#mbox').scrollTop=sc}if(ticks%5===0)save()}
+function startSim(){clearInterval(simT);if(speed>0)simT=setInterval(tickFn,1000/speed);$('.live').classList.toggle('paused',!speed)}
+$('#spd').onclick=e=>{const b=e.target.closest('button');if(!b)return;speed=+b.dataset.v;$$('#spd button').forEach(x=>x.classList.toggle('on',x===b));startSim();SFX.click();toast(speed?`Simulation at ${speed}×`:'Simulation paused')};
+startSim();
+let calcT=0;function calc(snd){const a=+$('#cAmt').value,t=+$('#cTerm').value,fee=Math.max(.01,a*.01*t/30);$('#cAmtV').textContent=usd0(a);$('#cTermV').textContent=t+(t>1?' days':' day');$('#cFee').textContent=usd(fee);$('#cTot').textContent=usd(a+fee);
+  $('#cL').textContent=usd(fee*.5,3);$('#cB').textContent=usd(fee*.25,3);$('#cT').textContent=usd(fee*.25,3);
+  $('#cNote').innerHTML=a<=5?'Fits a first line. The treasury backs it.':`Needs a backer to stake ${usd0(a)} first.`;$('#cGain').textContent='+'+Math.round(3+Math.log10(1+a)*5+t*.25);
+  $('#cAmt').style.setProperty('--p',(a-1)/499*100+'%');$('#cTerm').style.setProperty('--p',(t-1)/29*100+'%');
+  if(snd&&performance.now()-calcT>60){calcT=performance.now();tone(300+a*1.4+t*8,.04,'sine',.012)}}
+$('#cAmt').oninput=$('#cTerm').oninput=()=>calc(true);calc();
+$('#resetBtn').onclick=()=>{const b=$('#resetBtn');if(b._a&&Date.now()-b._a<3000){S=fresh();seed();buildTree();initLeaves();save();renderAll();toast('Simulation reset')}else{b._a=Date.now();toast('Tap reset again to confirm')}};
+
+/* reveal + nav */
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.12});$$('[data-r]').forEach(el=>io.observe(el));
+const secs=['agents','how','ways','activity','faq'];addEventListener('scroll',()=>{let cur='';for(const id of secs){const el=document.getElementById(id);if(el.getBoundingClientRect().top<innerHeight*.35)cur=id}$$('#nav a').forEach(a=>a.classList.toggle('on',a.getAttribute('href')==='#'+cur))},{passive:true});
+addEventListener('resize',sizeTree);
+sizeTree();treeLoop();renderAll();
+</script>
+
+</body>
+</html>
